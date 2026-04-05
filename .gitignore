@@ -5,3 +5,5 @@ logs/
 .vscode/
 __pycache__/
 *.pyc
+
+CS2_Arb.egg-info/

@@ -327,6 +327,9 @@ def fetch_snapshot_metrics(
       - highest bid (+ qty) via /listings/{id}/buy-orders
       - vol24h & asp24h via /history/<name>/sales (filtered client-side)
     """
+
+    full_name = name
+
     # If item family doesn't support floats, never pass wear filters
     supports_float = _item_supports_float(name)
     requested_wear = wear_bucket
@@ -390,6 +393,7 @@ def fetch_snapshot_metrics(
 
     return {
         "source": source,
+        "market_hash_name": full_name,
         "lowest_ask": lowest.price_usd if lowest else 0.0,
         "lowest_ask_id": lowest.id if lowest else "",
         "highest_bid": highest_bid,
