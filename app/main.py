@@ -15,7 +15,7 @@ from .logger import log_snapshot_both
 
 def _parse_args(argv: list[str]) -> dict:
     p = argparse.ArgumentParser(
-        prog="CS2_Arb",
+        prog="cs2-cross-market-arbitrage-analyzer",
         description="Fetch current CSFloat snapshot (lowest ask, highest bid, 24h sales).",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )

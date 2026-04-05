@@ -1,7 +1,7 @@
 [project]
-name = "CS2_Arb"
+name = "cs2-cross-market-arbitrage-analyzer"
 version = "0.1.0"
-description = "CS2 skin arbitrage tool"
+description = "Cross-market CS2 pricing analysis and arbitrage research toolkit"
 requires-python = ">=3.11"
 authors = [{ name = "Jacob Huang" }]
 license = { text = "MIT" }

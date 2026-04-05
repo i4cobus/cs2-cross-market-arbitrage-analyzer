@@ -1,6 +1,6 @@
-# CS2_Arb
+# CS2 Cross-Market Arbitrage Analyzer
 
-`CS2_Arb` is a Python project for collecting CS2 market data, normalizing item names across marketplaces, and comparing UU and CSFloat pricing for arbitrage research.
+`CS2 Cross-Market Arbitrage Analyzer` is a Python project for collecting CS2 market data, normalizing item names across marketplaces, and comparing UU and CSFloat pricing for arbitrage research.
 
 Current implementation includes:
 
@@ -28,7 +28,7 @@ The repo is now published as open source for research and learning purposes.
 ## Project Structure
 
 ```text
-CS2_Arb/
+cs2-cross-market-arbitrage-analyzer/
 ├─ app/
 │  ├─ __init__.py
 │  ├─ compare.py
