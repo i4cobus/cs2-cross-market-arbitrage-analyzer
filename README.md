@@ -1,170 +1,205 @@
+# CS2_Arb
 
+`CS2_Arb` is a Python project for collecting CS2 market data, normalizing item names across marketplaces, and comparing UU and CSFloat pricing for arbitrage research.
 
-# CS2_Arb — CS2 Skin Arbitrage Tool
+Current implementation includes:
 
-**Goal:**  
-Identify cross-market opportunities by fetching for each CS2 skin (filtered by wear & type) the **current lowest ask**, **current highest bid**, and **24-hour sales metrics** (volume & ASP).  
-The project is designed to later integrate with **UU** prices to calculate profit ratios.
+- CSFloat snapshots for lowest ask, highest bid, top bid quantity, 24h sales volume, and 24h average selling price
+- UU template search and template-detail snapshot parsing
+- Cross-market comparison between UU ask prices and CSFloat ask/bid prices
+- Item-name normalization for wear tiers, StatTrak, Souvenir, knives, gloves, and non-floatable items
+- CSV snapshot logging for CSFloat runs
 
+The repo is now published as open source for research and learning purposes.
 
----
+## What Is Finished
 
-## 🚀 Features
+- `app/main.py`
+  Fetches a CSFloat snapshot for a single item and writes CSV logs.
+- `app/csfloat_client.py`
+  Handles listing pagination, buy-order lookup, fallback query strategies, and 24h metric aggregation.
+- `app/uu_client.py`
+  Searches UU templates and parses UU template detail responses into a normalized snapshot structure.
+- `app/compare.py`
+  Compares UU and CSFloat snapshots and calculates spread against both CSFloat lowest ask and highest bid.
+- `app/market_name.py`
+  Normalizes Steam / CSFloat market hash names from friendly inputs.
 
-- **CSFloat snapshot per item**
-  - Lowest ask (USD)
-  - Highest bid (USD) + quantity at top of book
-  - 24h sales volume and average selling price (ASP)
-- **Wear/type filters**
-  - Wear tiers: `fn`, `mw`, `ft`, `ww`, `bs`
-  - Type: `normal`, `stattrak`, `souvenir`
-- **Dual logging**
-  - `logs/csfloat_snapshots.csv` → append mode (history)
-  - `logs/csfloat_snapshot_latest.csv` → overwrite mode (latest snapshot)
-- **Future-ready for UU integration**
-  - Compare UU (CNY) prices vs CSFloat (USD) for arbitrage scoring
+## Project Structure
 
----
-
-## 📁 Project Structure
-```
+```text
 CS2_Arb/
 ├─ app/
 │  ├─ __init__.py
+│  ├─ compare.py
 │  ├─ config.py
 │  ├─ csfloat_client.py
 │  ├─ history.py
-│  ├─ wear.py
 │  ├─ logger.py
 │  ├─ main.py
+│  ├─ market_name.py
 │  ├─ quick_probe.py
-│  └─ models.py
-├─ .env                        
+│  ├─ test.py
+│  ├─ uu_client.py
+│  └─ wear.py
+├─ .env.example
 ├─ pyproject.toml
-├─ logs/                # auto-created for CSV outputs
 └─ README.md
 ```
----
 
-## 🧰 Requirements
+## Requirements
 
-- macOS or Linux  
-- Python **3.11+**
-- [CSFloat API key](https://csfloat.com)
+- Python `3.11+`
+- A CSFloat API key for CSFloat features
+- Valid UU request headers for UU features
 
----
+## Installation
 
-## ⚙️ Setup
-
-### 1. Create environment
 ```bash
-conda create -n cs2arb python=3.11 -y
-conda activate cs2arb
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -e .
 ```
 
-### 2. Install dependencies
+If you do not want editable install:
+
 ```bash
-pip install httpx python-dotenv tabulate pandas pydantic
-# (optional) developer tools
-pip install black ruff
+pip install httpx python-dotenv
 ```
 
-### 3. Create .env (example below)
+## Configuration
 
-Create a file named .env:
-```bash
-CSFLOAT_API_KEY=your_api_key_here
+Create a `.env` file from `.env.example`.
+
+### Required for CSFloat
+
+```dotenv
+CSFLOAT_API_KEY=your_csfloat_api_key
 DEFAULT_ITEM=AK-47 | Redline (Field-Tested)
+```
 
-# optional tuning
+### Required for UU
+
+```dotenv
+UU_AUTHORIZATION=...
+UU_DEVICE_ID=...
+UU_DEVICE_UK=...
+UU_UK=...
+```
+
+### Optional
+
+```dotenv
 CNY_USD=0.14
-CSFLOAT_SELL_FEE=0.02
-CSFLOAT_WITHDRAW_FEE=0.025
-LOCKUP_DAYS=7
-MIN_PROFIT_USD=1.0
-MIN_ROI=0.02
-MIN_BID_QTY=1
+UU_APP_VERSION=5.26.0
+UU_SECRET_V=h5_v1
+UU_COOKIE=
 ANCHOR_BUFFER_PCT=0.00
 ```
 
----
+## Usage
 
-## 🧩 Usage
+### CSFloat snapshot CLI
 
-### 1. Single snapshot
+Fetch one CSFloat snapshot and write logs:
+
 ```bash
-python -m app.main --snapshot "AK-47 | Redline (Field-Tested)" --wear ft --category normal
+python3 -m app.main --snapshot "AK-47 | Fire Serpent" --wear mw --category normal
 ```
-### 2. With debug info
+
+Quick probe without writing logs:
+
 ```bash
-python -m app.main --snapshot "AK-47 | Fire Serpent (Minimal Wear)" --wear mw --category normal --debug
+python3 -m app.main --snapshot "Music Kit | Skog, Metal" --category stattrak --probe --debug
 ```
-### 3. Output example
+
+### UU + CSFloat comparison workflow
+
+There is not yet a dedicated comparison CLI. The finished comparison flow currently lives in the Python modules and in `app/test.py`.
+
+Minimal example:
+
+```python
+from app.csfloat_client import fetch_snapshot_by_params
+from app.uu_client import search_and_get_snapshot
+from app.compare import compare_snapshots
+
+cs_snapshot = fetch_snapshot_by_params(
+    base_name="Sport Gloves | Nocts",
+    wear_key="ft",
+    category_key="normal",
+)
+
+uu_snapshot = search_and_get_snapshot("夜行衣", index=0)
+
+result = compare_snapshots(cs_snapshot, uu_snapshot, cny_to_usd=0.14)
+print(result)
+```
+
+You can also run the existing manual integration harness:
+
 ```bash
-Item: AK-47 | Fire Serpent (Minimal Wear)
-Wear: mw  Category: normal  Source: strict(name+cat+wear)
-Lowest ask:  $1637.32   (id: 906759820814715701)
-Highest bid: $1612.00  (qty: 5)
-Vol 24h:     23
-ASP 24h:     $1625.87
-Wrote logs → logs/csfloat_snapshots.csv (append), logs/csfloat_snapshot_latest.csv (overwrite)
+python3 -m app.test
 ```
 
----
+That script is intended for developer verification, not as a polished end-user interface.
 
-## 🧾 Logging
+## Output
 
-|File |	Mode |	Purpose |
-| --- | --- | --- | 
-|logs/csfloat_snapshots.csv	|Append|	Keeps historical records for time-series analysis|
-|logs/csfloat_snapshot_latest.csv	|Overwrite	|Contains only the most recent snapshot|
+### CSFloat snapshot fields
 
-Each log row includes:
-```
-timestamp, item, wear, category, source, lowest_ask_usd, highest_bid_usd, highest_bid_qty, vol24h, asp24h_usd.
-```
----
+- `lowest_ask`
+- `lowest_ask_id`
+- `highest_bid`
+- `highest_bid_qty`
+- `vol24h`
+- `asp24h`
+- `used_category`
+- `used_wear`
+- `source`
+- `is_floatable`
 
-## 🪶 Wear tiers
+### Comparison fields
 
-|Key |	Tier	| Float range |
-| --- | --- |  ---|
-|fn | 	Factory New |	0.00–0.07 |
-|mw	 | Minimal Wear	| 0.07–0.15 |
-|ft	|Field-Tested	|0.15–0.38|
-|ww	|Well-Worn|	0.38–0.45|
-|bs	|Battle-Scarred	|0.45–1.00|
+- `uu_lowest_ask_cny`
+- `uu_lowest_ask_usd`
+- `cs_lowest_ask_usd`
+- `cs_highest_bid_usd`
+- `spread_to_cs_lowest_usd`
+- `spread_to_cs_lowest_pct`
+- `spread_to_cs_bid_usd`
+- `spread_to_cs_bid_pct`
 
+## Logging
 
----
+Running `app.main` writes:
 
+- `logs/csfloat_snapshots.csv` for append-only history
+- `logs/csfloat_snapshot_latest.csv` for the latest snapshot only
 
-## 🧮 Config reference
+## Notes
 
-|Variable |	Purpose |
-| --- | --- |
-|CSFLOAT_API_KEY	|required API key|
-|DEFAULT_ITEM	|fallback item name|
-|CNY_USD	|conversion rate|
-|CSFLOAT_SELL_FEE	|fee when selling on CSFloat|
-|CSFLOAT_WITHDRAW_FEE	|withdrawal fee|
-|MIN_PROFIT_USD, MIN_ROI, MIN_BID_QTY	|filters|
-|ANCHOR_BUFFER_PCT	|safety haircut on lowest ask|
+- Wear filters are automatically disabled for non-floatable item families such as music kits, stickers, agents, graffiti, cases, and charms.
+- The UU integration depends on authenticated request headers and may break if UU changes its private API behavior.
+- The current repo contains comparison logic and integration helpers, but not yet a production-grade scan pipeline or dashboard.
 
+## Development Status
 
----
+Implemented:
 
-## 🧭 Roadmap
-	•	✅ CSFloat lowest ask / highest bid / vol24h / ASP24h
-	•	🔄 Integrate UU fetcher
-	•	🧮 ROI filtering & scoring dashboard
-	•	📈 Time-series and alert automation
+- CSFloat data collection
+- UU template lookup
+- Cross-market comparison logic
+- Market-hash-name normalization
+- CSV logging
 
----
+Not yet implemented:
 
-## 📜 License
+- Batch scanner / ranked opportunity report
+- Unified CLI for UU comparison
+- Automated tests
+- Historical analytics dashboard
 
-Proprietary — all rights reserved.
-For personal research and development use only.
+## License
 
----
+This project is licensed under the MIT License. See [LICENSE](LICENSE).
