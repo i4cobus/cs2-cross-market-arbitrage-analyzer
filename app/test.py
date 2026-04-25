@@ -4,8 +4,14 @@ from dataclasses import dataclass
 from typing import Optional, List
 
 from app.csfloat_client import fetch_snapshot_by_params
-from app.uu_client import search_templates, get_template_snapshot, pretty_print_snapshot
+from app.uu_client import (
+    enrich_snapshot_with_purchase_orders,
+    get_template_snapshot,
+    pretty_print_snapshot,
+    search_templates,
+)
 from app.compare import compare_snapshots, pretty_print_comparison
+from app.market_name import build_market_hash_name
 
 
 @dataclass
@@ -29,6 +35,20 @@ def print_subheader(title: str) -> None:
     print("\n" + "-" * 40)
     print(title)
     print("-" * 40)
+
+
+def normalize_market_hash_name(name: Optional[str]) -> Optional[str]:
+    if not name:
+        return None
+    return " ".join(str(name).strip().split())
+
+
+def expected_market_hash_name(case: TestCase) -> str:
+    return build_market_hash_name(
+        base_name=case.base_name,
+        wear=case.wear,
+        category=case.category,
+    )
 
 
 def fetch_cs_snapshot(case: TestCase):
@@ -58,21 +78,41 @@ def search_uu_candidates(case: TestCase):
     return candidates
 
 
-def fetch_uu_snapshot(candidates: list[dict], case: TestCase):
+def fetch_uu_snapshot(candidates: list[dict], case: TestCase, expected_name: str):
     if not candidates:
         return None
 
-    if case.uu_index < 0 or case.uu_index >= len(candidates):
-        print(f"uu_index out of range: {case.uu_index}, total={len(candidates)}")
-        return None
-
-    chosen = candidates[case.uu_index]
     print_subheader("Step 3: Fetch UU snapshot")
-    print("Chosen candidate:", chosen)
+    print("Expected market_hash_name:", expected_name)
 
-    uu_snap = get_template_snapshot(chosen["template_id"], debug=case.debug)
-    pretty_print_snapshot(uu_snap)
-    return uu_snap
+    expected_normalized = normalize_market_hash_name(expected_name)
+    checked = []
+
+    for i, candidate in enumerate(candidates):
+        uu_snap = get_template_snapshot(
+            candidate["template_id"],
+            debug=case.debug,
+            include_purchase_orders=False,
+        )
+        candidate_name = normalize_market_hash_name(uu_snap.market_hash_name)
+        checked.append(candidate_name)
+
+        print(f"Candidate {i}:", candidate)
+        print("market_hash_name:", candidate_name)
+
+        if candidate_name == expected_normalized:
+            print("Chosen candidate:", candidate)
+            uu_snap = enrich_snapshot_with_purchase_orders(
+                uu_snap,
+                template_id=candidate["template_id"],
+                debug=case.debug,
+            )
+            pretty_print_snapshot(uu_snap)
+            return uu_snap
+
+    print("No exact UU candidate matched expected market_hash_name.")
+    print("Checked market_hash_names:", checked)
+    return None
 
 
 def compare_two_snapshots(cs_snap, uu_snap):
@@ -95,12 +135,15 @@ def test_one_item(case: TestCase):
     print("wear      :", case.wear)
     print("category  :", case.category)
     print("uu_keyword:", case.uu_keyword)
-    print("uu_index  :", case.uu_index)
+    print("uu_index  :", case.uu_index, "(legacy only; exact matching is used)")
     print("debug     :", case.debug)
+
+    expected_name = expected_market_hash_name(case)
+    print("expected  :", expected_name)
 
     cs_snap = fetch_cs_snapshot(case)
     candidates = search_uu_candidates(case)
-    uu_snap = fetch_uu_snapshot(candidates, case)
+    uu_snap = fetch_uu_snapshot(candidates, case, expected_name)
     result = compare_two_snapshots(cs_snap, uu_snap)
 
     return {

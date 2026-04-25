@@ -67,10 +67,10 @@ def compare_snapshots(
     UU:
         market_hash_name
         lowest_ask
-        highest_bid = None
+        highest_bid
         bid_reference
         listings
-        bid_depth = None
+        bid_depth
         bid_depth_reference
         currency = "CNY"
 
@@ -82,6 +82,8 @@ def compare_snapshots(
 
             "uu_lowest_ask_cny": ...,
             "uu_lowest_ask_usd": ...,
+            "uu_highest_bid_cny": ...,
+            "uu_highest_bid_usd": ...,
 
             "cs_lowest_ask_usd": ...,
             "cs_highest_bid_usd": ...,
@@ -126,6 +128,8 @@ def compare_snapshots(
 
     uu_lowest_ask_cny = _to_float(uu.get("lowest_ask"))
     uu_lowest_ask_usd = uu_lowest_ask_cny * cny_to_usd if uu_lowest_ask_cny is not None else None
+    uu_highest_bid_cny = _to_float(uu.get("highest_bid"))
+    uu_highest_bid_usd = uu_highest_bid_cny * cny_to_usd if uu_highest_bid_cny is not None else None
 
     cs_lowest_ask_usd = _to_float(cs.get("lowest_ask"))
     cs_highest_bid_usd = _to_float(cs.get("highest_bid"))
@@ -152,7 +156,10 @@ def compare_snapshots(
         # UU
         "uu_lowest_ask_cny": uu_lowest_ask_cny,
         "uu_lowest_ask_usd": uu_lowest_ask_usd,
+        "uu_highest_bid_cny": uu_highest_bid_cny,
+        "uu_highest_bid_usd": uu_highest_bid_usd,
         "uu_listings": uu.get("listings"),
+        "uu_bid_depth": uu.get("bid_depth"),
         "uu_bid_reference": _to_float(uu.get("bid_reference")),
         "uu_bid_depth_reference": uu.get("bid_depth_reference"),
 
@@ -208,7 +215,10 @@ def pretty_print_comparison(result: Dict[str, Any]) -> None:
     print("\n[UU]")
     print("uu_lowest_ask_cny        :", fmt_money(result.get("uu_lowest_ask_cny"), "CNY"))
     print("uu_lowest_ask_usd        :", fmt_money(result.get("uu_lowest_ask_usd"), "USD"))
+    print("uu_highest_bid_cny       :", fmt_money(result.get("uu_highest_bid_cny"), "CNY"))
+    print("uu_highest_bid_usd       :", fmt_money(result.get("uu_highest_bid_usd"), "USD"))
     print("uu_listings              :", result.get("uu_listings"))
+    print("uu_bid_depth             :", result.get("uu_bid_depth"))
     print("uu_bid_reference         :", fmt_money(result.get("uu_bid_reference"), "CNY"))
     print("uu_bid_depth_reference   :", result.get("uu_bid_depth_reference"))
 

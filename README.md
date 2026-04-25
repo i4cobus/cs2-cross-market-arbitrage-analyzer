@@ -5,7 +5,7 @@
 Current implementation includes:
 
 - CSFloat snapshots for lowest ask, highest bid, top bid quantity, 24h sales volume, and 24h average selling price
-- UU template search and template-detail snapshot parsing
+- UU template search, template-detail snapshot parsing, and current buy-order parsing
 - Cross-market comparison between UU ask prices and CSFloat ask/bid prices
 - Item-name normalization for wear tiers, StatTrak, Souvenir, knives, gloves, and non-floatable items
 - CSV snapshot logging for CSFloat runs
@@ -19,7 +19,7 @@ The repo is now published as open source for research and learning purposes.
 - `app/csfloat_client.py`
   Handles listing pagination, buy-order lookup, fallback query strategies, and 24h metric aggregation.
 - `app/uu_client.py`
-  Searches UU templates and parses UU template detail responses into a normalized snapshot structure.
+  Searches UU templates and parses UU template detail plus current purchase-order responses into a normalized snapshot structure.
 - `app/compare.py`
   Compares UU and CSFloat snapshots and calculates spread against both CSFloat lowest ask and highest bid.
 - `app/market_name.py`
@@ -121,8 +121,15 @@ Minimal example:
 
 ```python
 from app.csfloat_client import fetch_snapshot_by_params
-from app.uu_client import search_and_get_snapshot
+from app.uu_client import search_and_get_exact_snapshot
+from app.market_name import build_market_hash_name
 from app.compare import compare_snapshots
+
+market_hash_name = build_market_hash_name(
+    base_name="Sport Gloves | Nocts",
+    wear="ft",
+    category="normal",
+)
 
 cs_snapshot = fetch_snapshot_by_params(
     base_name="Sport Gloves | Nocts",
@@ -130,7 +137,10 @@ cs_snapshot = fetch_snapshot_by_params(
     category_key="normal",
 )
 
-uu_snapshot = search_and_get_snapshot("夜行衣", index=0)
+uu_snapshot = search_and_get_exact_snapshot(
+    keyword="夜行衣",
+    market_hash_name=market_hash_name,
+)
 
 result = compare_snapshots(cs_snapshot, uu_snapshot, cny_to_usd=0.14)
 print(result)
@@ -163,6 +173,9 @@ That script is intended for developer verification, not as a polished end-user i
 
 - `uu_lowest_ask_cny`
 - `uu_lowest_ask_usd`
+- `uu_highest_bid_cny`
+- `uu_highest_bid_usd`
+- `uu_bid_depth`
 - `cs_lowest_ask_usd`
 - `cs_highest_bid_usd`
 - `spread_to_cs_lowest_usd`
@@ -181,6 +194,7 @@ Running `app.main` writes:
 
 - Wear filters are automatically disabled for non-floatable item families such as music kits, stickers, agents, graffiti, cases, and charms.
 - The UU integration depends on authenticated request headers and may break if UU changes its private API behavior.
+- UU current buy orders are available through the purchase-order endpoint, but reliable historical trading volume is not exposed by the current UU integration.
 - The current repo contains comparison logic and integration helpers, but not yet a production-grade scan pipeline or dashboard.
 
 ## Development Status
@@ -189,6 +203,7 @@ Implemented:
 
 - CSFloat data collection
 - UU template lookup
+- UU current buy-order lookup
 - Cross-market comparison logic
 - Market-hash-name normalization
 - CSV logging
