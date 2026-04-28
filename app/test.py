@@ -5,6 +5,7 @@ from typing import Optional, List
 
 from app.csfloat_client import fetch_snapshot_by_params
 from app.uu_client import (
+    enrich_snapshot_with_on_sale_listings,
     enrich_snapshot_with_purchase_orders,
     get_template_snapshot,
     pretty_print_snapshot,
@@ -92,6 +93,7 @@ def fetch_uu_snapshot(candidates: list[dict], case: TestCase, expected_name: str
         uu_snap = get_template_snapshot(
             candidate["template_id"],
             debug=case.debug,
+            include_on_sale_listings=False,
             include_purchase_orders=False,
         )
         candidate_name = normalize_market_hash_name(uu_snap.market_hash_name)
@@ -102,6 +104,11 @@ def fetch_uu_snapshot(candidates: list[dict], case: TestCase, expected_name: str
 
         if candidate_name == expected_normalized:
             print("Chosen candidate:", candidate)
+            uu_snap = enrich_snapshot_with_on_sale_listings(
+                uu_snap,
+                template_id=candidate["template_id"],
+                debug=case.debug,
+            )
             uu_snap = enrich_snapshot_with_purchase_orders(
                 uu_snap,
                 template_id=candidate["template_id"],

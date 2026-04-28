@@ -5,7 +5,7 @@
 Current implementation includes:
 
 - CSFloat snapshots for lowest ask, highest bid, top bid quantity, 24h sales volume, and 24h average selling price
-- UU template search, template-detail snapshot parsing, and current buy-order parsing
+- UU template search, template-detail parsing, current sell-listing parsing, and current buy-order parsing
 - Cross-market comparison between UU ask prices and CSFloat ask/bid prices
 - Item-name normalization for wear tiers, StatTrak, Souvenir, knives, gloves, and non-floatable items
 - CSV snapshot logging for CSFloat runs
@@ -19,7 +19,7 @@ The repo is now published as open source for research and learning purposes.
 - `app/csfloat_client.py`
   Handles listing pagination, buy-order lookup, fallback query strategies, and 24h metric aggregation.
 - `app/uu_client.py`
-  Searches UU templates and parses UU template detail plus current purchase-order responses into a normalized snapshot structure.
+  Searches UU templates and parses UU template detail, current sell listings, and current purchase-order responses into a normalized snapshot structure.
 - `app/compare.py`
   Compares UU and CSFloat snapshots and calculates spread against both CSFloat lowest ask and highest bid.
 - `app/market_name.py`
@@ -154,6 +154,34 @@ python3 -m app.test
 
 That script is intended for developer verification, not as a polished end-user interface.
 
+### Opportunity dataset builder
+
+Build a structured dataset from `data/watchlist.csv`:
+
+```bash
+python3 -m app.dataset_builder --overwrite
+```
+
+This writes `data/opportunity_snapshots.csv`, with one row per watchlist item. The dataset is designed for later feature engineering, ranking, SQL analytics, and LLM-assisted analysis.
+
+Watchlist format:
+
+```csv
+base_name,wear,category,uu_keyword
+"Sport Gloves | Nocts",ft,normal,夜行衣
+"Music Kit | Skog, Metal",,normal,Skog
+```
+
+### Business indicators
+
+Compute business indicators and an explainable opportunity score:
+
+```bash
+python3 -m app.features --top 10
+```
+
+This reads `data/opportunity_snapshots.csv` and writes `data/opportunity_features.csv`.
+
 ## Output
 
 ### CSFloat snapshot fields
@@ -183,6 +211,41 @@ That script is intended for developer verification, not as a polished end-user i
 - `spread_to_cs_bid_usd`
 - `spread_to_cs_bid_pct`
 
+### Opportunity dataset fields
+
+- `timestamp`
+- `base_name`
+- `wear`
+- `category`
+- `uu_keyword`
+- `market_hash_name`
+- `matched`
+- `data_quality_flag`
+- `cs_lowest_ask_usd`
+- `cs_highest_bid_usd`
+- `cs_bid_depth`
+- `cs_vol24h`
+- `cs_asp24h`
+- `uu_lowest_ask_cny`
+- `uu_lowest_ask_usd`
+- `uu_highest_bid_cny`
+- `uu_highest_bid_usd`
+- `uu_bid_depth`
+- `uu_listings`
+- `spread_to_cs_bid_pct`
+
+### Business indicator fields
+
+- `profit_margin_pct`
+- `instant_exit_margin_pct`
+- `cs_liquidity_score`
+- `uu_supply_score`
+- `demand_score`
+- `data_quality_score`
+- `risk_score`
+- `opportunity_score`
+- `recommendation_label`
+
 ## Logging
 
 Running `app.main` writes:
@@ -194,7 +257,8 @@ Running `app.main` writes:
 
 - Wear filters are automatically disabled for non-floatable item families such as music kits, stickers, agents, graffiti, cases, and charms.
 - The UU integration depends on authenticated request headers and may break if UU changes its private API behavior.
-- UU current buy orders are available through the purchase-order endpoint, but reliable historical trading volume is not exposed by the current UU integration.
+- UU current buy orders are available through the purchase-order endpoint. The request uses the broad `minAbrade=0` and `maxAbrade=1` range.
+- Reliable historical trading volume is not exposed by the current UU integration.
 - The current repo contains comparison logic and integration helpers, but not yet a production-grade scan pipeline or dashboard.
 
 ## Development Status
@@ -204,6 +268,7 @@ Implemented:
 - CSFloat data collection
 - UU template lookup
 - UU current buy-order lookup
+- Business indicator scoring
 - Cross-market comparison logic
 - Market-hash-name normalization
 - CSV logging

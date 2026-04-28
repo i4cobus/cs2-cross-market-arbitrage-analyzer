@@ -25,6 +25,12 @@ class PurchaseOrderSummary:
 
 
 @dataclass
+class OnSaleSummary:
+    lowest_ask: Optional[float]
+    listings: Optional[int]
+
+
+@dataclass
 class MarketSnapshot:
     source: str
 
@@ -240,6 +246,8 @@ def get_template_purchase_orders(
     """
     payload = {
         "templateId": str(template_id),
+        "minAbrade": "0",
+        "maxAbrade": "1",
         "pageIndex": int(page_index),
         "pageSize": int(page_size),
     }
@@ -249,6 +257,114 @@ def get_template_purchase_orders(
         payload,
         debug=debug,
     )
+
+
+def get_on_sale_commodities(
+    template_id: str,
+    game_id: str = "730",
+    list_type: str = "10",
+    list_sort_type: int = 1,
+    sort_type: int = 0,
+    page_index: int = 1,
+    page_size: int = 10,
+    debug: bool = False,
+) -> Dict[str, Any]:
+    """
+    Fetch current UU sell listings for a template.
+    """
+    payload = {
+        "gameId": str(game_id),
+        "listType": str(list_type),
+        "templateId": str(template_id),
+        "listSortType": int(list_sort_type),
+        "sortType": int(sort_type),
+        "pageIndex": int(page_index),
+        "pageSize": int(page_size),
+    }
+
+    return _post(
+        "/api/homepage/pc/goods/market/queryOnSaleCommodityList",
+        payload,
+        debug=debug,
+    )
+
+
+def _extract_first_list(values: Any) -> List[Dict[str, Any]]:
+    if isinstance(values, list):
+        return [item for item in values if isinstance(item, dict)]
+    if not isinstance(values, dict):
+        return []
+
+    preferred_keys = (
+        "commodityList",
+        "commodityResponseList",
+        "list",
+        "items",
+        "rows",
+        "records",
+        "dataList",
+    )
+    for key in preferred_keys:
+        found = _extract_first_list(values.get(key))
+        if found:
+            return found
+
+    for value in values.values():
+        found = _extract_first_list(value)
+        if found:
+            return found
+
+    return []
+
+
+def _extract_total(values: Any) -> Optional[int]:
+    if not isinstance(values, dict):
+        return None
+    for key in ("total", "totalCount", "TotalCount", "Total", "count"):
+        total = _to_int(values.get(key))
+        if total is not None:
+            return total
+    for value in values.values():
+        total = _extract_total(value)
+        if total is not None:
+            return total
+    return None
+
+
+def _extract_listing_price(listing: Dict[str, Any]) -> Optional[float]:
+    price_keys = (
+        "price",
+        "sellPrice",
+        "salePrice",
+        "commodityPrice",
+        "commodityPriceCny",
+        "commodityPriceYuan",
+        "priceValue",
+        "Price",
+        "SellPrice",
+    )
+    for key in price_keys:
+        price = _to_float(listing.get(key))
+        if price is not None:
+            return price
+    return None
+
+
+def parse_on_sale_summary(on_sale_response: Dict[str, Any]) -> OnSaleSummary:
+    data = on_sale_response.get("Data") or on_sale_response.get("data") or {}
+    listings = _extract_first_list(data)
+    prices = [_extract_listing_price(item) for item in listings]
+    valid_prices = [price for price in prices if price is not None]
+
+    return OnSaleSummary(
+        lowest_ask=min(valid_prices) if valid_prices else None,
+        listings=_extract_total(data) or (len(listings) if listings else None),
+    )
+
+
+def get_on_sale_summary(template_id: str, debug: bool = False) -> OnSaleSummary:
+    raw = get_on_sale_commodities(template_id=template_id, debug=debug)
+    return parse_on_sale_summary(raw)
 
 
 def parse_purchase_order_summary(orders_response: Dict[str, Any]) -> PurchaseOrderSummary:
@@ -393,7 +509,10 @@ def enrich_snapshot_with_purchase_orders(
     debug: bool = False,
 ) -> MarketSnapshot:
     try:
-        purchase_summary = get_purchase_order_summary(template_id=template_id, debug=debug)
+        purchase_summary = get_purchase_order_summary(
+            template_id=template_id,
+            debug=debug,
+        )
         snapshot.highest_bid = purchase_summary.highest_bid
         snapshot.bid_depth = purchase_summary.bid_depth
         snapshot.bid_depth_reference = purchase_summary.total_orders or snapshot.bid_depth_reference
@@ -404,16 +523,46 @@ def enrich_snapshot_with_purchase_orders(
     return snapshot
 
 
+def enrich_snapshot_with_on_sale_listings(
+    snapshot: MarketSnapshot,
+    template_id: str,
+    debug: bool = False,
+) -> MarketSnapshot:
+    try:
+        on_sale_summary = get_on_sale_summary(template_id=template_id, debug=debug)
+        if on_sale_summary.lowest_ask is not None:
+            snapshot.lowest_ask = on_sale_summary.lowest_ask
+        if on_sale_summary.listings is not None:
+            snapshot.listings = on_sale_summary.listings
+    except Exception as e:
+        if debug:
+            print("Failed to fetch UU on-sale listings:", repr(e))
+
+    return snapshot
+
+
 def get_template_snapshot(
     template_id: str,
     debug: bool = False,
+    include_on_sale_listings: bool = True,
     include_purchase_orders: bool = True,
 ) -> MarketSnapshot:
     raw = get_template_detail(template_id=template_id, debug=debug)
     snapshot = parse_template_detail(raw)
 
+    if include_on_sale_listings:
+        enrich_snapshot_with_on_sale_listings(
+            snapshot,
+            template_id=template_id,
+            debug=debug,
+        )
+
     if include_purchase_orders:
-        enrich_snapshot_with_purchase_orders(snapshot, template_id=template_id, debug=debug)
+        enrich_snapshot_with_purchase_orders(
+            snapshot,
+            template_id=template_id,
+            debug=debug,
+        )
 
     return snapshot
 
@@ -443,6 +592,7 @@ def search_and_get_exact_snapshot(
         snapshot = get_template_snapshot(
             template_id=candidate["template_id"],
             debug=debug,
+            include_on_sale_listings=False,
             include_purchase_orders=False,
         )
         candidate_name = _normalize_market_hash_name(snapshot.market_hash_name)
@@ -450,6 +600,11 @@ def search_and_get_exact_snapshot(
             checked.append(f"{candidate['template_id']}: {candidate_name}")
 
         if candidate_name == expected_name:
+            enrich_snapshot_with_on_sale_listings(
+                snapshot,
+                template_id=candidate["template_id"],
+                debug=debug,
+            )
             return enrich_snapshot_with_purchase_orders(
                 snapshot,
                 template_id=candidate["template_id"],

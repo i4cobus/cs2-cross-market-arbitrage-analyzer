@@ -167,7 +167,7 @@ def compare_snapshots(
         "cs_lowest_ask_usd": cs_lowest_ask_usd,
         "cs_highest_bid_usd": cs_highest_bid_usd,
         "cs_listings": cs.get("listings"),
-        "cs_bid_depth": cs.get("bid_depth"),
+        "cs_bid_depth": cs.get("bid_depth", cs.get("highest_bid_qty")),
         "cs_vol24h": cs.get("vol24h"),
         "cs_asp24h": _to_float(cs.get("asp24h")),
 
