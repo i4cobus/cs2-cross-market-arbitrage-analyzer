@@ -1,4 +1,4 @@
-# AI-Assisted Cross-Market Pricing Intelligence System
+# CS2 Cross-Market Pricing Intelligence System
 
 This project is a Python data application that collects marketplace data, normalizes item identities across platforms, builds structured analytical datasets, engineers business indicators, ranks opportunities, runs SQL analytics, and exposes an LLM-ready natural-language analysis interface.
 
