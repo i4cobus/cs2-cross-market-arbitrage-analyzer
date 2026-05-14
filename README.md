@@ -1,57 +1,323 @@
-# CS2 Cross-Market Arbitrage Analyzer
+# AI-Assisted Cross-Market Pricing Intelligence System
 
-`CS2 Cross-Market Arbitrage Analyzer` is a Python project for collecting CS2 market data, normalizing item names across marketplaces, and comparing UU and CSFloat pricing for arbitrage research.
+This project is a Python data application that collects marketplace data, normalizes item identities across platforms, builds structured analytical datasets, engineers business indicators, ranks opportunities, runs SQL analytics, and exposes an LLM-ready natural-language analysis interface.
 
-Current implementation includes:
+The domain is CS2 marketplace pricing, but the engineering focus is broader: API ingestion, data cleaning, feature engineering, recommendation ranking, SQL analytics, data quality checks, and LLM-style question answering over structured data.
 
-- CSFloat snapshots for lowest ask, highest bid, top bid quantity, 24h sales volume, and 24h average selling price
-- UU template search, template-detail parsing, current sell-listing parsing, and current buy-order parsing
-- Cross-market comparison between UU ask prices and CSFloat ask/bid prices
-- Item-name normalization for wear tiers, StatTrak, Souvenir, knives, gloves, and non-floatable items
-- CSV snapshot logging for CSFloat runs
+## Recruiter Summary
 
-The repo is now published as open source for research and learning purposes.
+- Built an end-to-end Python data pipeline that ingests data from CSFloat and YouPin APIs.
+- Normalized cross-market item names using Steam `market_hash_name` conventions.
+- Generated structured datasets for cross-market pricing, liquidity, spread, demand, and risk analysis.
+- Engineered business indicators including profit margin, instant-exit margin, liquidity score, demand score, supply score, risk score, and opportunity score.
+- Built an explainable recommendation layer that ranks market opportunities and provides human-readable reasons.
+- Added SQL analytics over generated datasets using in-memory SQLite.
+- Added an LLM-ready analyst that maps natural-language questions to vetted SQL analytics and returns grounded summaries.
+- Added automated unit tests for parsers, feature engineering, recommendation ranking, SQL analytics, and natural-language routing.
 
-## What Is Finished
+## Architecture
 
-- `app/main.py`
-  Fetches a CSFloat snapshot for a single item and writes CSV logs.
-- `app/csfloat_client.py`
-  Handles listing pagination, buy-order lookup, fallback query strategies, and 24h metric aggregation.
-- `app/uu_client.py`
-  Searches UU templates and parses UU template detail, current sell listings, and current purchase-order responses into a normalized snapshot structure.
-- `app/compare.py`
-  Compares UU and CSFloat snapshots and calculates spread against both CSFloat lowest ask and highest bid.
-- `app/market_name.py`
-  Normalizes Steam / CSFloat market hash names from friendly inputs.
+```text
+data/watchlist.csv
+  -> CSFloat API client
+  -> YouPin API client
+  -> market_hash_name normalization
+  -> data/opportunity_snapshots.csv
+  -> feature engineering
+  -> data/opportunity_features.csv
+  -> recommendation ranking
+  -> data/recommendations.csv
+  -> SQL analytics
+  -> LLM-ready natural-language analyst
+```
+
+## Skills Demonstrated
+
+- Python programming
+- API integration
+- Data pipeline engineering
+- CSV dataset construction
+- Feature engineering
+- Recommendation and ranking logic
+- SQL analytics
+- Data quality governance
+- Unit testing
+- Git-oriented project organization
+- LLM-ready retrieval and analysis workflow
 
 ## Project Structure
 
 ```text
 cs2-cross-market-arbitrage-analyzer/
 ├─ app/
-│  ├─ __init__.py
+│  ├─ analytics.py
 │  ├─ compare.py
 │  ├─ config.py
 │  ├─ csfloat_client.py
+│  ├─ dataset_builder.py
+│  ├─ features.py
 │  ├─ history.py
-│  ├─ logger.py
-│  ├─ main.py
+│  ├─ llm_analyst.py
+│  ├─ manual_integration.py
 │  ├─ market_name.py
-│  ├─ quick_probe.py
-│  ├─ test.py
+│  ├─ recommender.py
 │  ├─ uu_client.py
 │  └─ wear.py
+├─ data/
+│  ├─ watchlist.csv
+│  ├─ opportunity_snapshots.csv
+│  ├─ opportunity_features.csv
+│  └─ recommendations.csv
+├─ sql/
+│  ├─ data_quality_report.sql
+│  ├─ label_distribution.sql
+│  ├─ liquidity_analysis.sql
+│  └─ top_opportunities.sql
+├─ tests/
+│  ├─ test_analytics.py
+│  ├─ test_dataset_builder.py
+│  ├─ test_features.py
+│  ├─ test_llm_analyst.py
+│  ├─ test_market_name.py
+│  ├─ test_recommender.py
+│  └─ test_uu_client.py
 ├─ .env.example
 ├─ pyproject.toml
 └─ README.md
 ```
 
-## Requirements
+## End-To-End Demo
 
-- Python `3.11+`
-- A CSFloat API key for CSFloat features
-- Valid UU request headers for UU features
+Build the snapshot dataset:
+
+```bash
+python3 -m app.dataset_builder --overwrite
+```
+
+Compute business indicators:
+
+```bash
+python3 -m app.features --top 10
+```
+
+Build ranked recommendations:
+
+```bash
+python3 -m app.recommender --min-label watchlist --top 10
+```
+
+Run SQL analytics:
+
+```bash
+python3 -m app.analytics --query sql/top_opportunities.sql --limit 10
+python3 -m app.analytics --query sql/data_quality_report.sql
+python3 -m app.analytics --query sql/label_distribution.sql
+python3 -m app.analytics --query sql/liquidity_analysis.sql
+```
+
+Ask natural-language analytics questions:
+
+```bash
+python3 -m app.llm_analyst "Which items are strong candidates and why?"
+python3 -m app.llm_analyst "Summarize data quality"
+python3 -m app.llm_analyst "Show label distribution"
+python3 -m app.llm_analyst "Which items have strong liquidity?"
+```
+
+Example analyst output:
+
+```text
+Question: Summarize data quality
+Intent: data_quality
+SQL used: sql/data_quality_report.sql
+
+Dataset quality summary: 76 rows, 100.0% match rate, 100.0% OK rows, 0 missing UU asks, 0 missing UU bids, 1 missing CS bids, and 37 rows with negative instant-exit margin.
+```
+
+## Business Indicators
+
+`profit_margin_pct`
+
+```text
+(cs_lowest_ask_usd - uu_lowest_ask_usd) / uu_lowest_ask_usd
+```
+
+Measures theoretical spread against the CSFloat lowest ask.
+
+`instant_exit_margin_pct`
+
+```text
+(cs_highest_bid_usd - uu_lowest_ask_usd) / uu_lowest_ask_usd
+```
+
+Measures stricter executable spread against the CSFloat highest bid.
+
+`cs_liquidity_score`
+
+```text
+0.65 * log_score(cs_vol24h, 50)
++ 0.35 * log_score(cs_bid_depth, 20)
+```
+
+Estimates exit liquidity using CSFloat 24h volume and bid depth.
+
+`uu_supply_score`
+
+```text
+0.70 * log_score(uu_listings, 100)
++ 0.30 * log_score(uu_bid_depth, 50)
+```
+
+Estimates source-side supply and YouPin buy-order activity.
+
+`demand_score`
+
+```text
+0.75 * log_score(cs_vol24h, 50)
++ 0.25 * log_score(uu_bid_depth, 50)
+```
+
+Combines recent CSFloat sales volume and YouPin bid depth.
+
+`risk_score`
+
+Penalizes missing margin, negative margin, thin margin, low liquidity, low supply, and weak data quality.
+
+`opportunity_score`
+
+```text
+0.35 * profit_score
++ 0.25 * cs_liquidity_score
++ 0.20 * demand_score
++ 0.10 * uu_supply_score
++ 0.10 * data_quality_score
+- 0.20 * risk_score
+```
+
+Final explainable ranking score.
+
+## Recommendation Layer
+
+The recommender reads `data/opportunity_features.csv`, filters opportunities by label, ranks them, and writes `data/recommendations.csv`.
+
+Recommendation labels:
+
+- `strong_candidate`
+- `watchlist`
+- `low_priority`
+- `avoid`
+- `insufficient_data`
+
+Each recommendation includes a reason string such as:
+
+```text
+high instant-exit margin; strong CSFloat liquidity; strong demand signal; controlled risk
+```
+
+## SQL Analytics
+
+The analytics layer loads generated CSV datasets into in-memory SQLite tables:
+
+- `features`
+- `recommendations`
+
+Included queries:
+
+- `sql/top_opportunities.sql`
+- `sql/data_quality_report.sql`
+- `sql/label_distribution.sql`
+- `sql/liquidity_analysis.sql`
+
+This demonstrates relational analytics over generated data without requiring an external database service.
+
+## LLM-Ready Analyst
+
+`app/llm_analyst.py` is a safe retrieval layer for natural-language data analysis.
+
+It does not invent answers. It:
+
+1. Classifies the user question.
+2. Selects a vetted SQL query.
+3. Runs SQL over generated datasets.
+4. Summarizes the returned rows.
+
+Supported intents:
+
+- `top_opportunities`
+- `data_quality`
+- `label_distribution`
+- `liquidity`
+
+This can later be connected to an external LLM summarizer, but the current implementation is deterministic, testable, and grounded in retrieved data.
+
+## Dataset Outputs
+
+`data/opportunity_snapshots.csv`
+
+Raw cross-market snapshot dataset.
+
+Important columns:
+
+- `market_hash_name`
+- `cs_lowest_ask_usd`
+- `cs_highest_bid_usd`
+- `cs_vol24h`
+- `cs_asp24h`
+- `uu_lowest_ask_usd`
+- `uu_highest_bid_usd`
+- `uu_bid_depth`
+- `uu_listings`
+- `spread_to_cs_bid_pct`
+- `data_quality_flag`
+
+`data/opportunity_features.csv`
+
+Feature-engineered dataset with business indicators.
+
+Important columns:
+
+- `profit_margin_pct`
+- `instant_exit_margin_pct`
+- `cs_liquidity_score`
+- `uu_supply_score`
+- `demand_score`
+- `risk_score`
+- `opportunity_score`
+- `recommendation_label`
+
+`data/recommendations.csv`
+
+Ranked and explainable recommendations.
+
+Important columns:
+
+- `rank`
+- `market_hash_name`
+- `recommendation_label`
+- `opportunity_score`
+- `instant_exit_margin_pct`
+- `risk_score`
+- `recommendation_reason`
+
+## Testing
+
+Run all tests:
+
+```bash
+python3 -m unittest discover -s tests -v
+```
+
+Current coverage includes:
+
+- Watchlist CSV parsing
+- Market-name normalization
+- YouPin sell-listing parsing
+- YouPin purchase-order parsing
+- API payload construction
+- Business indicator scoring
+- Recommendation ranking
+- SQL analytics
+- LLM-ready natural-language routing
 
 ## Installation
 
@@ -61,24 +327,23 @@ source .venv/bin/activate
 pip install -e .
 ```
 
-If you do not want editable install:
+Python version:
 
-```bash
-pip install httpx python-dotenv
+```text
+Python 3.11+
 ```
 
 ## Configuration
 
 Create a `.env` file from `.env.example`.
 
-### Required for CSFloat
+Required for CSFloat:
 
 ```dotenv
 CSFLOAT_API_KEY=your_csfloat_api_key
-DEFAULT_ITEM=AK-47 | Redline (Field-Tested)
 ```
 
-### Required for UU
+Required for YouPin:
 
 ```dotenv
 UU_AUTHORIZATION=...
@@ -87,198 +352,40 @@ UU_DEVICE_UK=...
 UU_UK=...
 ```
 
-### Optional
+Optional:
 
 ```dotenv
 CNY_USD=0.14
 UU_APP_VERSION=5.26.0
 UU_SECRET_V=h5_v1
 UU_COOKIE=
-ANCHOR_BUFFER_PCT=0.00
 ```
 
-## Usage
+## Design Notes
 
-### CSFloat snapshot CLI
+- Exact cross-market matching uses normalized Steam `market_hash_name`.
+- YouPin search is treated as a fuzzy candidate generator, not a trusted exact match.
+- YouPin current sell listings are used for `lowest_ask`.
+- YouPin current purchase orders are used for `highest_bid`.
+- CSFloat sales history is used for 24h volume and average sale price.
+- YouPin historical trading volume is not available in the current integration.
+- The LLM analyst is deterministic by design and can be safely extended with an external LLM summarizer later.
 
-Fetch one CSFloat snapshot and write logs:
+## Limitations
 
-```bash
-python3 -m app.main --snapshot "AK-47 | Fire Serpent" --wear mw --category normal
-```
+- This is a research and portfolio project, not financial advice or a production trading system.
+- Marketplace APIs can change without notice.
+- YouPin authentication headers are required for live collection.
+- Currency conversion currently uses a configured static `CNY_USD` rate.
+- Generated recommendations should be interpreted as analytical signals, not guaranteed arbitrage.
 
-Quick probe without writing logs:
+## Future Work
 
-```bash
-python3 -m app.main --snapshot "Music Kit | Skog, Metal" --category stattrak --probe --debug
-```
-
-### UU + CSFloat comparison workflow
-
-There is not yet a dedicated comparison CLI. The finished comparison flow currently lives in the Python modules and in `app/test.py`.
-
-Minimal example:
-
-```python
-from app.csfloat_client import fetch_snapshot_by_params
-from app.uu_client import search_and_get_exact_snapshot
-from app.market_name import build_market_hash_name
-from app.compare import compare_snapshots
-
-market_hash_name = build_market_hash_name(
-    base_name="Sport Gloves | Nocts",
-    wear="ft",
-    category="normal",
-)
-
-cs_snapshot = fetch_snapshot_by_params(
-    base_name="Sport Gloves | Nocts",
-    wear_key="ft",
-    category_key="normal",
-)
-
-uu_snapshot = search_and_get_exact_snapshot(
-    keyword="夜行衣",
-    market_hash_name=market_hash_name,
-)
-
-result = compare_snapshots(cs_snapshot, uu_snapshot, cny_to_usd=0.14)
-print(result)
-```
-
-You can also run the existing manual integration harness:
-
-```bash
-python3 -m app.test
-```
-
-That script is intended for developer verification, not as a polished end-user interface.
-
-### Opportunity dataset builder
-
-Build a structured dataset from `data/watchlist.csv`:
-
-```bash
-python3 -m app.dataset_builder --overwrite
-```
-
-This writes `data/opportunity_snapshots.csv`, with one row per watchlist item. The dataset is designed for later feature engineering, ranking, SQL analytics, and LLM-assisted analysis.
-
-Watchlist format:
-
-```csv
-base_name,wear,category,uu_keyword
-"Sport Gloves | Nocts",ft,normal,夜行衣
-"Music Kit | Skog, Metal",,normal,Skog
-```
-
-### Business indicators
-
-Compute business indicators and an explainable opportunity score:
-
-```bash
-python3 -m app.features --top 10
-```
-
-This reads `data/opportunity_snapshots.csv` and writes `data/opportunity_features.csv`.
-
-## Output
-
-### CSFloat snapshot fields
-
-- `lowest_ask`
-- `lowest_ask_id`
-- `highest_bid`
-- `highest_bid_qty`
-- `vol24h`
-- `asp24h`
-- `used_category`
-- `used_wear`
-- `source`
-- `is_floatable`
-
-### Comparison fields
-
-- `uu_lowest_ask_cny`
-- `uu_lowest_ask_usd`
-- `uu_highest_bid_cny`
-- `uu_highest_bid_usd`
-- `uu_bid_depth`
-- `cs_lowest_ask_usd`
-- `cs_highest_bid_usd`
-- `spread_to_cs_lowest_usd`
-- `spread_to_cs_lowest_pct`
-- `spread_to_cs_bid_usd`
-- `spread_to_cs_bid_pct`
-
-### Opportunity dataset fields
-
-- `timestamp`
-- `base_name`
-- `wear`
-- `category`
-- `uu_keyword`
-- `market_hash_name`
-- `matched`
-- `data_quality_flag`
-- `cs_lowest_ask_usd`
-- `cs_highest_bid_usd`
-- `cs_bid_depth`
-- `cs_vol24h`
-- `cs_asp24h`
-- `uu_lowest_ask_cny`
-- `uu_lowest_ask_usd`
-- `uu_highest_bid_cny`
-- `uu_highest_bid_usd`
-- `uu_bid_depth`
-- `uu_listings`
-- `spread_to_cs_bid_pct`
-
-### Business indicator fields
-
-- `profit_margin_pct`
-- `instant_exit_margin_pct`
-- `cs_liquidity_score`
-- `uu_supply_score`
-- `demand_score`
-- `data_quality_score`
-- `risk_score`
-- `opportunity_score`
-- `recommendation_label`
-
-## Logging
-
-Running `app.main` writes:
-
-- `logs/csfloat_snapshots.csv` for append-only history
-- `logs/csfloat_snapshot_latest.csv` for the latest snapshot only
-
-## Notes
-
-- Wear filters are automatically disabled for non-floatable item families such as music kits, stickers, agents, graffiti, cases, and charms.
-- The UU integration depends on authenticated request headers and may break if UU changes its private API behavior.
-- UU current buy orders are available through the purchase-order endpoint. The request uses the broad `minAbrade=0` and `maxAbrade=1` range.
-- Reliable historical trading volume is not exposed by the current UU integration.
-- The current repo contains comparison logic and integration helpers, but not yet a production-grade scan pipeline or dashboard.
-
-## Development Status
-
-Implemented:
-
-- CSFloat data collection
-- UU template lookup
-- UU current buy-order lookup
-- Business indicator scoring
-- Cross-market comparison logic
-- Market-hash-name normalization
-- CSV logging
-
-Not yet implemented:
-
-- Batch scanner / ranked opportunity report
-- Unified CLI for UU comparison
-- Automated tests
-- Historical analytics dashboard
+- Add a single `app.pipeline` command that runs dataset building, feature engineering, recommendation ranking, and analytics.
+- Add optional external LLM summarization using retrieved SQL results.
+- Add richer data quality reports and anomaly detection.
+- Add historical trend analysis from repeated scans.
+- Add dashboard or notebook visualizations.
 
 ## License
 

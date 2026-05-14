@@ -16,7 +16,7 @@ from app.market_name import build_market_hash_name
 
 
 @dataclass
-class TestCase:
+class IntegrationCase:
     label: str
     base_name: str
     wear: Optional[str]
@@ -44,7 +44,7 @@ def normalize_market_hash_name(name: Optional[str]) -> Optional[str]:
     return " ".join(str(name).strip().split())
 
 
-def expected_market_hash_name(case: TestCase) -> str:
+def expected_market_hash_name(case: IntegrationCase) -> str:
     return build_market_hash_name(
         base_name=case.base_name,
         wear=case.wear,
@@ -52,7 +52,7 @@ def expected_market_hash_name(case: TestCase) -> str:
     )
 
 
-def fetch_cs_snapshot(case: TestCase):
+def fetch_cs_snapshot(case: IntegrationCase):
     print_subheader("Step 1: Fetch CSFloat snapshot")
     cs_snap = fetch_snapshot_by_params(
         base_name=case.base_name,
@@ -64,7 +64,7 @@ def fetch_cs_snapshot(case: TestCase):
     return cs_snap
 
 
-def search_uu_candidates(case: TestCase):
+def search_uu_candidates(case: IntegrationCase):
     print_subheader("Step 2: Search UU templates")
     candidates = search_templates(case.uu_keyword, debug=case.debug)
 
@@ -79,7 +79,7 @@ def search_uu_candidates(case: TestCase):
     return candidates
 
 
-def fetch_uu_snapshot(candidates: list[dict], case: TestCase, expected_name: str):
+def fetch_uu_snapshot(candidates: list[dict], case: IntegrationCase, expected_name: str):
     if not candidates:
         return None
 
@@ -136,7 +136,7 @@ def compare_two_snapshots(cs_snap, uu_snap):
     return result
 
 
-def test_one_item(case: TestCase):
+def run_one_item(case: IntegrationCase):
     print_header(f"Testing: {case.label}")
     print("base_name :", case.base_name)
     print("wear      :", case.wear)
@@ -162,11 +162,11 @@ def test_one_item(case: TestCase):
     }
 
 
-def run_cases(cases: List[TestCase]):
+def run_cases(cases: List[IntegrationCase]):
     results = []
     for case in cases:
         try:
-            result = test_one_item(case)
+            result = run_one_item(case)
             results.append(result)
         except Exception as e:
             print_header(f"FAILED: {case.label}")
@@ -187,7 +187,7 @@ def run_cases(cases: List[TestCase]):
 def main():
     cases = [
         # 手套
-        TestCase(
+        IntegrationCase(
             label="Gloves - Nocts FT",
             base_name="Sport Gloves | Nocts",
             wear="ft",
@@ -198,7 +198,7 @@ def main():
         ),
 
         # 音乐盒
-        TestCase(
+        IntegrationCase(
             label="Music Kit - Skog normal",
             base_name="Music Kit | Skog, Metal",
             wear=None,
@@ -207,7 +207,7 @@ def main():
             uu_index=0,
             debug=True,
         ),
-        TestCase(
+        IntegrationCase(
             label="Music Kit - Skog stattrak",
             base_name="Music Kit | Skog, Metal",
             wear=None,
@@ -218,7 +218,7 @@ def main():
         ),
 
         # 贴纸
-        TestCase(
+        IntegrationCase(
             label="Sticker - Crown (Foil)",
             base_name="Sticker | Crown (Foil)",
             wear=None,
@@ -229,7 +229,7 @@ def main():
         ),
 
         # 箱子
-        TestCase(
+        IntegrationCase(
             label="Case - Revolution Case",
             base_name="Revolution Case",
             wear=None,

@@ -1,10 +1,17 @@
 .env
-logs/
-*.csv
-!data/*.csv
 .vscode/
 __pycache__/
 *.pyc
-data/
-
+.DS_Store
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
 CS2_Arb.egg-info/
+
+logs/
+
+# Keep small portfolio sample datasets under data/.
+*.csv
+!data/
+!data/*.csv
